@@ -12,12 +12,47 @@ Resources:
     Properties:
       InstanceType: t1.micro
       ImageId: ami-0fca02518e0faeb84
+      IamInstanceProfile: ssm-patcher-role
+  MaintenanceWindow:
+    Type: 'AWS::SSM::MaintenanceWindow'
+    Properties:
+      Description: 'A SSM MaintenanceWindow used to patch instance'
+      AllowUnassociatedTargets: true
+      Cutoff: 0
+      Schedule: rate(2 days)
+      Duration: 2
+      Name: patch-instance-time
+  MaintenanceWindowTargetForPatchInstance:
+    Type: "AWS::SSM::MaintenanceWindowTarget"
+    Properties:
+      Description: maintenance windowTarget to patch instance
+      WindowId: !Ref MaintenanceWindow
+      ResourceType: INSTANCE
+      Targets: 
+        - Key: InstanceIds
+          Values: 
+            - !Ref EC2Instance
+      Name: 'maintenance-windowTarget-for-PatchInstance'
+  MaintenanceWindowTaskForPatchInstance:
+    Type: "AWS::SSM::MaintenanceWindowTask"
+    Properties:
+      MaxErrors: 3
+      Description: maintenance windowTask to patch instance
+      ServiceRoleArn: arn:aws:iam::xxxxxxxxxxxx:role/ssm-patcher-role
+      Priority: 1
+      MaxConcurrency: 2
+      Targets:
+          - Key: InstanceIds
+            Values:
+              - !Ref EC2Instance
+      Name: 'maintenance-windowTask-for-PatchInstance'
+      TaskArn: AWS-ApplyPatchBaseline
+      WindowId: !Ref MaintenanceWindow
+      TaskType: RUN_COMMAND
 Outputs:
   InstanceId:
     Description: InstanceId of the newly created EC2 instance
     Value: !Ref EC2Instance
   AZ:
     Description: Availability Zone of the newly created EC2 instance
-    Value: !GetAtt 
-      - EC2Instance
-      - AvailabilityZone
+    Value: !GetAtt EC2Instance.AvailabilityZone
